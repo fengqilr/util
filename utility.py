@@ -24,52 +24,7 @@ from sklearn.svm import SVC
 import datetime
 # import xgboost
 
-db_pool = {}
-class MongodbUtils(object):
-    """
-    连接MongoDB 模块
-    """
-    def __init__(self, table="", ip="", port=None, collection="",
-                 replicaset_name="", read_preference=ReadPreference.SECONDARY_PREFERRED):
 
-        self.table = table
-        self.ip = ip
-        self.port = port
-        self.collection = collection
-        self.replicaset_name = replicaset_name
-        self.read_preference = read_preference
-
-        if (ip, port) not in db_pool:
-            db_pool[(ip, port)] = self.db_connection()
-        elif not db_pool[(ip, port)]:
-            db_pool[(ip, port)] = self.db_connection()
-
-        self.db = db_pool[(ip, port)]
-        self.db_table = self.db_table_connect()
-
-    def __enter__(self):
-        return self.db_table
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-    def db_connection(self):
-        db = None
-        try:
-            if self.replicaset_name:
-                db = MongoReplicaSetClient(self.ip, read_preference=self.read_preference, replicaSet=self.replicaset_name)
-            else:
-                db = MongoClient(self.ip, self.port)
-
-        except Exception as e:
-            send_mail(sub='[API SERVICE ERROR]mongodb connection fail: '
-                          'try to connect %s:%s-%s:%s' % (self.ip, self.port, self.collection, self.table),
-                      content=traceback.format_exc(), to_list=["lianrui@juxinli.com"])
-        return db
-
-    def db_table_connect(self):
-        table_db = self.db[self.collection][self.table]
-        return table_db
 
 
 ###### logger module ##########
@@ -93,37 +48,6 @@ class MongodbUtils(object):
 #     cur.execute('SET character_set_connection=utf8;')
 
 
-def send_mail(sub, content, to_list):
-    """
-    发送邮件模块
-    :param sub: 主题
-    :param content: 内容
-    :param to_list: 收件人信息
-    :return:
-    """
-    # 发件人设置
-    mail_host = "smtp.exmail.qq.com"            # 设置服务器
-    mail_user = "auto_report@juxinli.com"      # 用户名
-    mail_pass = "a123456"                        # 口令
-    mail_postfix = "juxinli.com"                # 发件箱的后缀
-
-    # 获取IP地址
-    _sub = socket.gethostbyname(socket.gethostname())+": "+sub
-    me = "digit_reco monitor"+"<"+mail_user+">"
-    msg = MIMEText(content, _subtype='plain', _charset='utf-8')
-    msg['Subject'] = _sub
-    msg['From'] = me
-    msg['To'] = ";".join(to_list)
-    try:
-        server = smtplib.SMTP()
-        server.connect(mail_host)
-        server.login(mail_user, mail_pass)
-        server.sendmail(me, to_list, msg.as_string())
-        server.close()
-        return True
-    except Exception, e:
-        print str(e)
-        return False
 
 
 def affinity_propagation_cluster(sim_matrix, variate_list, preference_value=1):
